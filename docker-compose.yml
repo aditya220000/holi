@@ -1,0 +1,80 @@
+version: "3.9"
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: reel-empire-api
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+      - ./data:/data
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+      - rabbitmq
+      - redis
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: reel-empire-worker
+    command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=4
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+      - ./data:/data
+    depends_on:
+      - postgres
+      - rabbitmq
+      - redis
+
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: reel-empire-scheduler
+    command: python -m app.scheduler
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+      - ./data:/data
+    depends_on:
+      - postgres
+      - rabbitmq
+      - redis
+
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: reel-empire-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: reel-empire-postgres
+    environment:
+      POSTGRES_DB: reel_empire
+      POSTGRES_USER: reel_empire
+      POSTGRES_PASSWORD: reel_empire
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:7-alpine
+    container_name: reel-empire-redis
+    ports:
+      - "6379:6379"
+
+volumes:
+  postgres_data:
