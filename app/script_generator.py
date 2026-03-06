@@ -290,8 +290,13 @@ def _llm_virality_score(script_payload: dict[str, Any], topic: Topic) -> float:
     )
 
     try:
-        raw = _call_anthropic(prompt)
-        parsed = json.loads(raw)
+        raw = _call_ollama(prompt)
+        # Attempt to find JSON in the output since local models might be chatty
+        match = re.search(r'\{.*\}', raw, re.DOTALL)
+        if match:
+            parsed = json.loads(match.group(0))
+        else:
+            parsed = json.loads(raw)
         score = float(parsed.get("score", 0))
         if 1 <= score <= 10:
             return round(score, 2)
@@ -302,12 +307,10 @@ def _llm_virality_score(script_payload: dict[str, Any], topic: Topic) -> float:
 
 
 def _generate_raw_script(prompt: str, topic: Topic, style_label: str) -> str:
-    for caller in (_call_anthropic, _call_grok, _call_ollama):
-        try:
-            return caller(prompt)
-        except Exception:
-            continue
-    return _fallback_script(topic, style_label)
+    try:
+        return _call_ollama(prompt)
+    except Exception:
+        return _fallback_script(topic, style_label)
 
 
 def generate_script_variants(

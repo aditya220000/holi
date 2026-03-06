@@ -125,40 +125,6 @@ def _escape_drawtext(text: str) -> str:
     return escaped
 
 
-def build_subtitle_filter(script_payload: dict, target_duration: float) -> str:
-    sequence = [script_payload.get("hook", "")]
-    sequence.extend(script_payload.get("lines", []))
-    sequence.append(script_payload.get("cta", ""))
-    sequence = [line.strip() for line in sequence if line and line.strip()]
-
-    if not sequence:
-        sequence = ["No script lines found."]
-
-    slot = max(1.0, target_duration / len(sequence))
-    filters = []
-
-    for idx, line in enumerate(sequence):
-        start = round(idx * slot, 2)
-        end = round(min(target_duration, (idx + 1) * slot - 0.05), 2)
-        escaped = _escape_drawtext(line)
-        draw = (
-            "drawtext="
-            f"fontfile={DEFAULT_FONT}:"
-            f"text='{escaped}':"
-            "fontsize=62:"
-            "fontcolor=white:"
-            "borderw=4:"
-            "bordercolor=black:"
-            "box=0:"
-            "x=(w-text_w)/2:"
-            "y=(h-text_h)/2:"
-            f"enable='between(t,{start},{end})'"
-        )
-        filters.append(draw)
-
-    return ",".join(filters)
-
-
 def render_reel(
     clip_path: str,
     voice_path: str,
@@ -167,9 +133,17 @@ def render_reel(
     start_seconds: float,
     duration_seconds: float,
     music_path: str | None = None,
+    vtt_path: str | None = None,
 ) -> str:
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
-    subtitle_filter = build_subtitle_filter(script_payload, duration_seconds)
+    
+    # We will use the VTT file for subtitle rendering with subtitles filter
+    if vtt_path and Path(vtt_path).exists():
+        # Escape the colon and backslashes in path for the filter
+        esc_vtt_path = vtt_path.replace("\\", "\\\\").replace(":", "\\\\:")
+        subtitle_filter = f"subtitles='{esc_vtt_path}':force_style='Alignment=2,MarginV=100,Fontsize=24,PrimaryColour=&HFFFFFF,OutlineColour=&H000000,BorderStyle=1,Outline=2'"
+    else:
+        subtitle_filter = ""
 
     video_chain = (
         "[0:v]"

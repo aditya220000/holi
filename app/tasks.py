@@ -135,6 +135,7 @@ def _finalize_reel_assets(db, reel: Reel, script_payload: dict, topic: Topic) ->
     voice_path, voice_id = synthesize_voiceover(script_payload, topic, str(reel.id))
 
     output_path = f"{settings.local_output_dir.rstrip('/')}/{reel.id}.mp4"
+    vtt_path = f"{settings.local_output_dir.rstrip('/')}/{reel.id}_voice.vtt"
     segment_duration = max(15.0, reel.broll_end_seconds - reel.broll_start_seconds)
     music_path = choose_random_music()
 
@@ -146,6 +147,7 @@ def _finalize_reel_assets(db, reel: Reel, script_payload: dict, topic: Topic) ->
         start_seconds=reel.broll_start_seconds,
         duration_seconds=segment_duration,
         music_path=music_path,
+        vtt_path=vtt_path,
     )
 
     reel.voice_id = voice_id
